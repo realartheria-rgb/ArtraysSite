@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ArtRays — Архитектурное освещение</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800;900&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: #050505;
+      color: #f5f5f5;
+      font-family: 'Inter', system-ui, sans-serif;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* Cursor */
+    #cursor-dot, #cursor-ring {
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      border-radius: 50%;
+      opacity: 1;
+      visibility: visible;
+      will-change: left, top;
+      z-index: 9999;
+    }
+    #cursor-dot {
+      width: 8px;
+      height: 8px;
+      background: #f5c842;
+      box-shadow: 0 0 14px rgba(245,200,66,1), 0 0 28px rgba(245,200,66,0.7), 0 0 44px rgba(245,200,66,0.35);
+      transform: translate(-50%, -50%);
+    }
+    #cursor-ring {
+      width: 40px;
+      height: 40px;
+      border: 1.5px solid rgba(245,200,66,0.9);
+      background: rgba(245,200,66,0.06);
+      box-shadow: 0 0 20px rgba(245,200,66,0.25), inset 0 0 14px rgba(245,200,66,0.08);
+      transition: width 0.2s, height 0.2s, border-color 0.2s, box-shadow 0.2s;
+      transform: translate(-50%, -50%);
+    }
+    #cursor-ring.hover {
+      width: 70px;
+      height: 70px;
+      border-color: #f5c842;
+      box-shadow: 0 0 28px rgba(245,200,66,0.55), inset 0 0 18px rgba(245,200,66,0.12);
+    }
+
+    /* Flashlight */
+    #flashlight-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 90;
+      background: radial-gradient(circle 220px at 50% 50%, transparent 0%, rgba(0,0,0,0.92) 100%);
+      mix-blend-mode: multiply;
+    }
+    #flashlight-overlay.light-on { display: block; }
+    #flashlight-overlay.light-off { display: none; }
+
+    /* Switch */
+    #flashlight-toggle {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 120;
+      width: 4px;
+      height: 28px;
+      border-radius: 3px;
+      background: linear-gradient(180deg, #f5c842 0%, #d4a017 100%);
+      box-shadow: 0 0 14px rgba(245,200,66,0.55), inset 0 1px 2px rgba(255,255,255,0.25);
+      border: 1px solid rgba(255,255,255,0.12);
+      cursor: pointer;
+      padding: 0;
+    }
+    #switch-indicator {
+      position: absolute;
+      top: 3px;
+      left: -7px;
+      width: 18px;
+      height: 10px;
+      border-radius: 2px;
+      background: rgba(0,0,0,0.45);
+      border: 1px solid rgba(255,255,255,0.18);
+      transition: top 0.25s ease;
+    }
+
+    /* Glass */
+    .glass {
+      background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 18px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      background: rgba(5,5,5,0.4);
+      backdrop-filter: blur(12px);
+    }
+    header .inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: 0.02em;
+    }
+    .logo-dot {
+      width: 10px;
+      height: 10px;
+      background: #f5c842;
+      border-radius: 50%;
+      box-shadow: 0 0 14px rgba(245,200,66,0.7);
+    }
+    .nav {
+      display: flex;
+      gap: 28px;
+      font-size: 13px;
+      opacity: 0.7;
+    }
+    .nav a:hover { opacity: 1; color: #f5c842; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      background: #f5c842;
+      color: #050505;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 14px;
+      border: none;
+      cursor: pointer;
+    }
+    .btn svg { transition: transform 0.2s; }
+    .btn:hover svg, .btn:hover { transform: translateX(2px); }
+
+    #hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 120px 24px 80px;
+      text-align: center;
+      overflow: hidden;
+    }
+    #hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 40%, rgba(245,200,66,0.12), transparent 55%),
+                  radial-gradient(circle at 80% 20%, rgba(255,255,255,0.04), transparent 40%);
+      pointer-events: none;
+    }
+    .hero-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      margin-bottom: 28px;
+      font-size: 13px;
+      opacity: 0.85;
+    }
+    .hero-title {
+      font-size: clamp(48px, 8vw, 96px);
+      font-weight: 900;
+      line-height: 0.95;
+      letter-spacing: -0.03em;
+    }
+    .gold { color: #f5c842; text-shadow: 0 0 24px rgba(245,200,66,0.5); }
+    .hero-sub {
+      margin-top: 24px;
+      font-size: clamp(16px, 2vw, 22px);
+      color: #a3a3a3;
+      line-height: 1.45;
+      max-width: 760px;
+      margin-left: auto;
+      margin-right: auto;
+      margin-bottom: 32px;
+    }
+
+    .beam {
+      position: absolute;
+      top: -30%;
+      width: 120px;
+      height: 160%;
+      background: linear-gradient(180deg, rgba(245,200,66,0.22), rgba(255,255,255,0.05), transparent);
+      filter: blur(36px);
+      opacity: 0.5;
+      transform: rotate(-14deg);
+      pointer-events: none;
+    }
+    .beam-left { left: 14%; animation: beam 7s ease-in-out infinite; }
+    .beam-right { right: 14%; animation: beam 7s ease-in-out infinite 2.5s; }
+
+    @keyframes beam {
+      0%, 100% { opacity: 0.4; transform: rotate(-14deg) translateY(0); }
+      50% { opacity: 0.8; transform: rotate(-10deg) translateY(30px); }
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+    @media (max-width: 880px) { .grid-3 { grid-template-columns: 1fr; } }
+
+    .card {
+      border-radius: 24px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.25s ease;
+      min-height: 220px;
+      display: flex;
+      align-items: flex-end;
+      background-size: cover;
+      background-position: center;
+      background-color: #0a0a0a;
+      cursor: pointer;
+    }
+    .card:hover { transform: translateY(-4px); }
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(5,5,5,0.25), rgba(5,5,5,0.55) 45%, rgba(5,5,5,0.88));
+      transition: opacity 0.4s ease;
+    }
+    .card:hover::before {
+      background: linear-gradient(180deg, rgba(5,5,5,0.1), rgba(5,5,5,0.35) 40%, rgba(245,200,66,0.08));
+    }
+    .card .card-glow {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 0%, rgba(245,200,66,0.18), transparent 60%);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    .card:hover .card-glow { opacity: 1; }
+    .tall { grid-row: span 2; min-height: 460px; }
+    .wide { grid-column: span 2; }
+    @media (max-width: 880px) { .tall, .wide { grid-row: span 1; grid-column: span 1; min-height: 220px;} }
+
+    .card .card-label {
+      position: relative;
+      z-index: 3;
+      padding: 18px 20px;
+      width: 100%;
+    }
+    .card-title { font-weight: 800; font-size: 22px; }
+    .card-desc { color: #d4d4d4; font-size: 14px; margin-top: 4px; }
+
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 24px;
+    }
+    .timeline-item {
+      display: grid;
+      grid-template-columns: 90px 1fr 1fr 36px;
+      gap: 16px;
+      align-items: center;
+      padding: 16px 18px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .timeline-item:hover {
+      border-color: rgba(245,200,66,0.35);
+      transform: translateX(4px);
+    }
+    @media (max-width: 680px) {
+      .timeline-item { grid-template-columns: 56px 1fr 36px; }
+      .timeline-item .step-desc { display: none; }
+    }
+    .step-num { font-weight: 900; font-size: 22px; color: #f5c842; }
+    .step-title { font-weight: 700; }
+    .step-desc { color: #a3a3a3; font-size: 14px; }
+
+    section { padding: 100px 0; }
+
+    h2 {
+      font-size: clamp(32px, 5vw, 56px);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      margin-bottom: 40px;
+    }
+    .section-label {
+      color: #f5c842;
+      font-weight: 700;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      margin-bottom: 12px;
+    }
+
+    .cta {
+      position: relative;
+      border-radius: 30px;
+      padding: 70px 30px;
+      text-align: center;
+      overflow: hidden;
+      border: 1px solid rgba(245,200,66,0.25);
+      background: radial-gradient(circle at 50% 0%, rgba(245,200,66,0.18), transparent 55%);
+    }
+    .cta h2 { margin-bottom: 12px; }
+    .cta p { color: #a3a3a3; margin-bottom: 20px; }
+    .contacts { margin-top: 10px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+
+    footer {
+      padding: 24px;
+      text-align: center;
+      border-top: 1px solid rgba(255,255,255,0.04);
+      color: #737373;
+      font-size: 13px;
+    }
+
+    /* Kinetic reveal */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      filter: blur(6px);
+      transition: opacity 0.9s cubic-bezier(0.22,1,0.36,1),
+                  transform 0.9s cubic-bezier(0.22,1,0.36,1),
+                  filter 0.9s ease;
+      will-change: transform, opacity, filter;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+    .delay-1 { transition-delay: 0.05s; }
+    .delay-2 { transition-delay: 0.1s; }
+    .delay-3 { transition-delay: 0.15s; }
+    .delay-4 { transition-delay: 0.2s; }
+    .delay-5 { transition-delay: 0.25s; }
+    .delay-6 { transition-delay: 0.3s; }
+    .delay-7 { transition-delay: 0.35s; }
+
+    .night-overlay {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(5,5,5,0.2), rgba(245,200,66,0.08) 50%, rgba(5,5,5,0.35)),
+        radial-gradient(circle at 50% 50%, rgba(245,200,66,0.22), transparent 60%);
+      opacity: 0;
+      transition: opacity 0.6s ease;
+      mix-blend-mode: screen;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .card:hover .night-overlay { opacity: 1; }
+
+    @media (max-width: 768px) {
+      .nav { display: none; }
+      .mobile-menu-btn { display: flex; }
+      .grid-3 { grid-template-columns: 1fr; }
+      .tall, .wide { grid-row: span 1; grid-column: span 1; min-height: 220px; }
+      .timeline-item { grid-template-columns: 56px 1fr 36px; }
+      .timeline-item .step-desc { display: none; }
+      .btn { width: 100%; justify-content: center; }
+      .contacts { flex-direction: column; align-items: stretch; }
+      header .inner { gap: 12px; }
+      section { padding: 64px 0; }
+      .cta { padding: 36px 20px; }
+      #cursor-dot, #cursor-ring { display: none; }
+      body { cursor: auto; }
+      #flashlight-toggle { cursor: pointer; }
+    }
+
+    @media (min-width: 769px) { .mobile-menu-btn { display: none !important; } }
+
+    .mobile-menu-btn {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(12px);
+      color: #f5f5f5;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="flashlight-overlay" class="light-on" aria-hidden="true"></div>
+
+  <div id="cursor-dot" aria-hidden="true"></div>
+  <div id="cursor-ring" aria-hidden="true"></div>
+
+  <button id="flashlight-toggle" aria-label="Переключить эффект света">
+    <span id="switch-indicator"></span>
+  </button>
+
+  <header>
+    <div class="container inner">
+      <div class="logo">
+        <div class="logo-dot"></div>
+        ArtRays
+      </div>
+      <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <nav class="nav" id="main-nav">
+        <a href="#projects">Проекты</a>
+        <a href="#process">Процесс</a>
+        <a href="#contact">Контакты</a>
+      </nav>
+      <a href="#contact" class="btn">
+        Обсудить проект
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+  </header>
+
+  <main>
+    <section id="hero">
+      <div class="beam beam-left"></div>
+      <div class="beam beam-right"></div>
+      <div class="container" style="position:relative;z-index:2;">
+        <div class="hero-pill glass reveal">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.5 4.5h4.5l-3.5 2.8 1.2 4.5L12 12l-3.7 2.8 1.2-4.5-3.5-2.8h4.5z"/></svg>
+          Архитектурное освещение нового поколения
+        </div>
+        <h1 class="hero-title reveal delay-1">
+          Эпоха<br/><span class="gold">освещения</span>
+        </h1>
+        <p class="hero-sub reveal delay-2">
+          Создаём световые концепции для архитектуры, мостов, парков и городских пространств. Технологии, которые превращают ночь в искусство.
+        </p>
+        <a href="#contact" class="btn reveal delay-3" style="padding:16px 28px; font-size:16px;">
+          Обсудить проект
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </section>
+
+    <section id="projects">
+      <div class="container">
+        <div class="section-label reveal">Направления</div>
+        <h2 class="reveal delay-1">Что мы освещаем</h2>
+        <div class="grid-3">
+          <div class="card card-dark tall reveal delay-1" style="background-image:url('bridge-night.png')">
+            <div class="card-glow"></div>
+            <div class="night-overlay"></div>
+            <div class="card-label">
+              <div class="card-title">Мосты</div>
+              <div class="card-desc">Архитектурно-художественная подсветка и информационные фасады</div>
+            </div>
+          </div>
+          <div class="card card-dark reveal delay-2" style="background-image:url('park-lights.png')">
+            <div class="card-glow"></div>
+            <div class="night-overlay"></div>
+            <div class="card-label">
+              <div class="card-title">Парки</div>
+              <div class="card-desc">Ландшафтное освещение, цветовые сценарные сценарии</div>
+            </div>
+          </div>
+          <div class="card card-dark reveal delay-3" style="background-image:url('sport.png')">
+            <div class="card-glow"></div>
+            <div class="night-overlay"></div>
+            <div class="card-label">
+              <div class="card-title">Спортобъекты</div>
+              <div class="card-desc">Фасады, эксплутационные комплексы, поля</div>
+            </div>
+          </div>
+          <div class="card card-dark wide reveal delay-2" style="background-image:url('monument.png')">
+            <div class="card-glow"></div>
+            <div class="night-overlay"></div>
+            <div class="card-label">
+              <div class="card-title">Памятники</div>
+              <div class="card-desc">Архитектурная подсветка памятников и достопримечательностей</div>
+            </div>
+          </div>
+          <div class="card card-dark reveal delay-4" style="background-image:url('fountein.png')">
+            <div class="card-glow"></div>
+            <div class="night-overlay"></div>
+            <div class="card-label">
+              <div class="card-title">Фонтаны</div>
+              <div class="card-desc">Подводная и контурная подсветка, лазеры</div>
+            </div>
+          </div>
+          <div class="card card-dark tall reveal delay-5" style="background-image:url('facade.png')">
+            <div class="card-glow"></div>
+            <div class="night-overlay"></div>
+            <div class="card-label">
+              <div class="card-title">Фасады</div>
+              <div class="card-desc">Жилые, коммерческие, общественные здания</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="process">
+      <div class="container">
+        <div class="section-label reveal">Процесс</div>
+        <h2 class="reveal delay-1">Как мы работаем</h2>
+        <div class="timeline">
+          <div class="timeline-item reveal delay-1">
+            <div class="step-num">01</div>
+            <div class="step-title">Бриф</div>
+            <div class="step-desc">Изучаем объект и цели</div>
+            <div>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v10M5 10l7 7 7-7"/></svg>
+            </div>
+          </div>
+          <div class="timeline-item reveal delay-2">
+            <div class="step-num">02</div>
+            <div class="step-title">Концепция</div>
+            <div class="step-desc">Создаём световую идею</div>
+            <div>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v10M5 10l7 7 7-7"/></svg>
+            </div>
+          </div>
+          <div class="timeline-item reveal delay-3">
+            <div class="step-num">03</div>
+            <div class="step-title">Визуализация</div>
+            <div class="step-desc">3D-модели и рендеры</div>
+            <div>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v10M5 10l7 7 7-7"/></svg>
+            </div>
+          </div>
+          <div class="timeline-item reveal delay-4">
+            <div class="step-num">04</div>
+            <div class="step-title">Документация</div>
+            <div class="step-desc">Рабочие схемы и спецификации</div>
+            <div>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v10M5 10l7 7 7-7"/></svg>
+            </div>
+          </div>
+          <div class="timeline-item reveal delay-5">
+            <div class="step-num">05</div>
+            <div class="step-title">Производство</div>
+            <div class="step-desc">Собственное производство в Москве</div>
+            <div>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v10M5 10l7 7 7-7"/></svg>
+            </div>
+          </div>
+          <div class="timeline-item reveal delay-6">
+            <div class="step-num">06</div>
+            <div class="step-title">Монтаж</div>
+            <div class="step-desc">Установка и настройка</div>
+            <div>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v10M5 10l7 7 7-7"/></svg>
+            </div>
+          </div>
+          <div class="timeline-item reveal delay-7">
+            <div class="step-num">07</div>
+            <div class="step-title">Поддержка</div>
+            <div class="step-desc">Гарантия и сервис</div>
+            <div>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v10M5 10l7 7 7-7"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact">
+      <div class="container">
+        <div class="cta reveal">
+          <h2>Создать концепцию освещения</h2>
+          <p>Готовы осветить ваш проект? Свяжитесь с нами для бесплатной консультации.</p>
+          <div class="contacts">
+            <a href="mailto:info@artrays.ru" class="btn">
+              info@artrays.ru
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </a>
+            <a href="tel:+74951234567" class="btn" style="background:transparent; color:#f5f5f5; border: 1px solid rgba(255,255,255,0.15);">
+              +7 (495) 123-45-67
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    ArtRays 2026 · Мастерство светового дизайна
+  </footer>
+
+  <script>
+    (function() {
+      try {
+        const dot = document.getElementById('cursor-dot');
+        const ring = document.getElementById('cursor-ring');
+        const flashlight = document.getElementById('flashlight-overlay');
+        const toggleBtn = document.getElementById('flashlight-toggle');
+        const ind = document.getElementById('switch-indicator');
+        const hoverTargets = document.querySelectorAll('a, button, .card, .timeline-item, #flashlight-toggle');
+        let flashlightOn = true;
+
+        function moveCursor(x, y) {
+          if (!dot || !ring) return;
+          dot.style.left = x + 'px';
+          dot.style.top = y + 'px';
+          ring.style.left = x + 'px';
+          ring.style.top = y + 'px';
+        }
+
+        window.addEventListener('mousemove', e => {
+          moveCursor(e.clientX, e.clientY);
+          if (flashlight && flashlightOn) {
+            flashlight.style.background = `radial-gradient(circle 220px at ${e.clientX}px ${e.clientY}px, transparent 0%, rgba(0,0,0,0.92) 100%)`;
+          }
+        });
+
+        window.addEventListener('mouseout', () => {
+          if (dot) dot.style.opacity = '0';
+          if (ring) ring.style.opacity = '0';
+        });
+        window.addEventListener('mouseover', () => {
+          if (dot) dot.style.opacity = '1';
+          if (ring) ring.style.opacity = '1';
+        });
+
+        hoverTargets.forEach(el => {
+          el.addEventListener('mouseenter', () => { if (ring) ring.classList.add('hover'); });
+          el.addEventListener('mouseleave', () => { if (ring) ring.classList.remove('hover'); });
+        });
+
+        if (toggleBtn && flashlight && ind) {
+          const applyState = () => {
+            flashlight.className = flashlightOn ? 'light-on' : 'light-off';
+            ind.style.top = flashlightOn ? '3px' : '13px';
+          };
+          toggleBtn.addEventListener('click', () => {
+            flashlightOn = !flashlightOn;
+            applyState();
+          });
+          applyState();
+        }
+
+        const revealEls = document.querySelectorAll('.reveal');
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) entry.target.classList.add('visible');
+          });
+        }, { threshold: 0.15 });
+        revealEls.forEach(el => observer.observe(el));
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  </script>
+</body>
+</html>
