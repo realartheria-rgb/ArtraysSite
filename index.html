@@ -447,7 +447,7 @@
   <div id="cursor-dot" aria-hidden="true"></div>
   <div id="cursor-ring" aria-hidden="true"></div>
 
-  <button id="light-toggle" class="on" aria-label="Переключить освещение">
+  <button id="light-toggle" aria-label="Переключить освещение">
     <span>свет</span>
     <span class="track"><span class="thumb"></span></span>
   </button>
@@ -648,8 +648,8 @@
         const flashlight = document.getElementById('flashlight-overlay');
         const lightToggle = document.getElementById('light-toggle');
         let lightOn = false;
-        let darkLevelOn = 0.01;
-        let darkLevelOff = 0.88;
+        let darkLevelOn = 0.00;
+        let darkLevelOff = 0.90;
         let flashlightRadius = 180;
         let mx = window.innerWidth / 2;
         let my = window.innerHeight / 2;
@@ -659,6 +659,19 @@
           const outer = lightOn ? darkLevelOn : darkLevelOff;
           const inner = lightOn ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.10)';
           flashlight.style.background = `radial-gradient(circle ${flashlightRadius}px at ${mx}px ${my}px, ${inner} 0%, transparent 18%, rgba(0,0,0,${outer}) 100%)`;
+        }
+
+        function applyState() {
+          if (lightOn) {
+            document.body.classList.remove('light-off');
+            lightToggle.classList.add('on');
+            flashlightRadius = 140;
+          } else {
+            document.body.classList.add('light-off');
+            lightToggle.classList.remove('on');
+            flashlightRadius = 280;
+          }
+          applyFlashlight();
         }
 
         function moveCursor(x, y) {
@@ -691,22 +704,11 @@
         });
 
         if (lightToggle) {
-          const apply = () => {
-            if (lightOn) {
-              document.body.classList.remove('light-off');
-              lightToggle.classList.add('on');
-              flashlightRadius = 140;
-            } else {
-              document.body.classList.add('light-off');
-              lightToggle.classList.remove('on');
-              flashlightRadius = 280;
-            }
-          };
           lightToggle.addEventListener('click', () => {
             lightOn = !lightOn;
-            applyFlashlight();
+            applyState();
           });
-          applyFlashlight();
+          applyState();
         }
 
         const revealEls = document.querySelectorAll('.reveal');
