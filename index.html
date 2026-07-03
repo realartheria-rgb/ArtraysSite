@@ -58,14 +58,14 @@
       inset: 0;
       pointer-events: none;
       z-index: 80;
-      background: transparent;
-      transition: background 0.35s ease;
+      background: #030303;
+      transition: background 0.45s ease;
     }
     #flashlight-overlay.light-on {
-      background: transparent !important;
+      background: transparent;
     }
     #flashlight-overlay.light-off {
-      background: #010101;
+      background: #030303;
     }
     #flashlight-toggle {
       position: fixed;
@@ -84,6 +84,7 @@
       font-weight: 800;
       font-size: 12px;
       cursor: pointer;
+      user-select: none;
     }
 
     .glass {
@@ -616,7 +617,14 @@
       }
 
       if (toggleBtn) {
-        toggleBtn.addEventListener('click', () => setOverlay(!lightOn));
+        toggleBtn.addEventListener('click', () => {
+          lightOn = !lightOn;
+          const on = !lightOn;
+          flashlight.classList.toggle('light-off', !lightOn);
+          flashlight.classList.toggle('light-on', lightOn);
+          flashlight.style.background = lightOn ? 'transparent' : '';
+          if (ind) ind.style.left = lightOn ? '3px' : '14px';
+        });
         toggleBtn.addEventListener('mouseenter', () => { if (ring) ring.classList.add('hover'); });
         toggleBtn.addEventListener('mouseleave', () => { if (ring) ring.classList.remove('hover'); });
       }
@@ -627,9 +635,15 @@
           flashlight.style.background = 'transparent';
         } else {
           const x = e.clientX, y = e.clientY;
-          flashlight.style.background = `radial-gradient(circle 220px at ${x}px ${y}px, transparent 0%, #010101 100%)`;
+          flashlight.style.background = `radial-gradient(circle 220px at ${x}px ${y}px, transparent 0%, #030303 100%)`;
         }
       });
+
+      if (flashlight) {
+        flashlight.classList.add('light-on');
+        flashlight.classList.remove('light-off');
+        flashlight.style.background = 'transparent';
+      }
 
       const revealEls = document.querySelectorAll('.reveal');
       const observer = new IntersectionObserver((entries) => {
