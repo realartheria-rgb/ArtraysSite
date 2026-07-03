@@ -59,11 +59,13 @@
       pointer-events: none;
       z-index: 80;
       background: transparent;
-      transition: opacity 0.35s ease;
+      transition: background 0.35s ease;
     }
     #flashlight-overlay.light-on {
-      background: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55));
-      box-shadow: inset 0 0 180px rgba(0,0,0,0.85);
+      background: transparent !important;
+    }
+    #flashlight-overlay.light-off {
+      background: #010101;
     }
     #flashlight-toggle {
       position: fixed;
@@ -597,39 +599,35 @@
       const toggleBtn = document.getElementById('flashlight-toggle');
       const ind = document.querySelector('#switch-indicator span');
       const hoverTargets = document.querySelectorAll('a, button, .card, .timeline-item, #flashlight-toggle');
-      let flashlightOn = true;
+      let lightOn = true;
 
-      function moveCursor(x, y) {
-        if (dot) { dot.style.left = x + 'px'; dot.style.top = y + 'px'; }
-        if (ring) { ring.style.left = x + 'px'; ring.style.top = y + 'px'; }
+      function setOverlay(light) {
+        if (!flashlight) return;
+        lightOn = light;
+        if (!light) {
+          flashlight.classList.add('light-off');
+          flashlight.classList.remove('light-on');
+        } else {
+          flashlight.classList.add('light-on');
+          flashlight.classList.remove('light-off');
+          flashlight.style.background = 'transparent';
+        }
+        if (ind) ind.style.left = light ? '3px' : '14px';
       }
-      window.addEventListener('mousemove', e => moveCursor(e.clientX, e.clientY));
-      window.addEventListener('touchstart', () => {
-        if (dot) dot.style.display = 'none';
-        if (ring) ring.style.display = 'none';
-      });
 
-      hoverTargets.forEach(el => {
-        el.addEventListener('mouseenter', () => { if (ring) ring.classList.add('hover'); });
-        el.addEventListener('mouseleave', () => { if (ring) ring.classList.remove('hover'); });
-      });
-
-      if (toggleBtn && ind) {
-        toggleBtn.addEventListener('click', () => {
-          flashlightOn = !flashlightOn;
-          ind.style.left = flashlightOn ? '3px' : '14px';
-          if (flashlight) flashlight.classList.toggle('light-on', flashlightOn);
-        });
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => setOverlay(!lightOn));
         toggleBtn.addEventListener('mouseenter', () => { if (ring) ring.classList.add('hover'); });
         toggleBtn.addEventListener('mouseleave', () => { if (ring) ring.classList.remove('hover'); });
       }
 
       window.addEventListener('mousemove', e => {
         if (!flashlight) return;
-        if (flashlightOn) {
+        if (lightOn) {
+          flashlight.style.background = 'transparent';
+        } else {
           const x = e.clientX, y = e.clientY;
-          flashlight.style.background = `radial-gradient(circle 220px at ${x}px ${y}px, transparent 0%, rgba(0,0,0,0.92) 100%)`;
-          flashlight.classList.add('light-on');
+          flashlight.style.background = `radial-gradient(circle 220px at ${x}px ${y}px, transparent 0%, #010101 100%)`;
         }
       });
 
