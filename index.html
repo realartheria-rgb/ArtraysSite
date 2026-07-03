@@ -52,20 +52,13 @@
       box-shadow: 0 0 28px rgba(245,200,66,0.55), inset 0 0 18px rgba(245,200,66,0.12);
     }
 
-    /* Flashlight */
+    /* Flashlight DOES NOT dim page anymore */
     #flashlight-overlay {
       position: fixed;
       inset: 0;
       pointer-events: none;
       z-index: 80;
-      background: #030303;
-      transition: background 0.45s ease;
-    }
-    #flashlight-overlay.light-on {
       background: transparent;
-    }
-    #flashlight-overlay.light-off {
-      background: #030303;
     }
     #flashlight-toggle {
       position: fixed;
@@ -601,49 +594,37 @@
       const ind = document.querySelector('#switch-indicator span');
       const hoverTargets = document.querySelectorAll('a, button, .card, .timeline-item, #flashlight-toggle');
       let lightOn = true;
+      let mouseX = -300, mouseY = -300;
+      let raf = false;
 
-      function setOverlay(light) {
-        if (!flashlight) return;
-        lightOn = light;
-        if (!light) {
-          flashlight.classList.add('light-off');
-          flashlight.classList.remove('light-on');
-        } else {
-          flashlight.classList.add('light-on');
-          flashlight.classList.remove('light-off');
-          flashlight.style.background = 'transparent';
-        }
-        if (ind) ind.style.left = light ? '3px' : '14px';
+      function setLight(on) {
+        lightOn = on;
+        if (ind) ind.style.left = on ? '3px' : '14px';
       }
 
       if (toggleBtn) {
-        toggleBtn.addEventListener('click', () => {
-          lightOn = !lightOn;
-          const on = !lightOn;
-          flashlight.classList.toggle('light-off', !lightOn);
-          flashlight.classList.toggle('light-on', lightOn);
-          flashlight.style.background = lightOn ? 'transparent' : '';
-          if (ind) ind.style.left = lightOn ? '3px' : '14px';
-        });
+        toggleBtn.addEventListener('click', () => setLight(!lightOn));
         toggleBtn.addEventListener('mouseenter', () => { if (ring) ring.classList.add('hover'); });
         toggleBtn.addEventListener('mouseleave', () => { if (ring) ring.classList.remove('hover'); });
       }
 
       window.addEventListener('mousemove', e => {
-        if (!flashlight) return;
-        if (lightOn) {
-          flashlight.style.background = 'transparent';
-        } else {
-          const x = e.clientX, y = e.clientY;
-          flashlight.style.background = `radial-gradient(circle 220px at ${x}px ${y}px, transparent 0%, #030303 100%)`;
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+        if (!raf && flashlight) {
+          raf = true;
+          requestAnimationFrame(() => {
+            raf = false;
+            if (!lightOn) {
+              flashlight.style.background = `radial-gradient(circle 220px at ${mouseX}px ${mouseY}px, transparent 0%, transparent 100%)`;
+            } else {
+              flashlight.style.background = 'transparent';
+            }
+          });
         }
       });
 
-      if (flashlight) {
-        flashlight.classList.add('light-on');
-        flashlight.classList.remove('light-off');
-        flashlight.style.background = 'transparent';
-      }
+      if (flashlight) flashlight.style.background = 'transparent';
 
       const revealEls = document.querySelectorAll('.reveal');
       const observer = new IntersectionObserver((entries) => {
