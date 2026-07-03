@@ -663,17 +663,80 @@
           applyState();
         }
 
-        const revealEls = document.querySelectorAll('.reveal');
-        const observer = new IntersectionObserver((entries) => {
-          entries.forEach(entry => {
-            if (entry.isIntersecting) entry.target.classList.add('visible');
-          });
-        }, { threshold: 0.15 });
-        revealEls.forEach(el => observer.observe(el));
-      } catch (e) {
-        console.error(e);
+        const kineticEls = document.querySelectorAll('#projects .card, #process .timeline-item, .cta, .reveal');
+      kineticEls.forEach((el, idx) => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(52px)';
+        el.style.filter = 'blur(7px)';
+        el.style.transition = 'opacity 1.1s cubic-bezier(0.22,1,0.36,1), transform 1.1s cubic-bezier(0.22,1,0.36,1), filter 1.1s ease';
+        el.dataset.kDelay = String(idx * 100);
+      });
+      const kineticObs = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          const el = entry.target;
+          if (el.dataset.kineticApplied) return;
+          el.dataset.kineticApplied = '1';
+          const delay = parseInt(el.dataset.kDelay || '0', 10);
+          setTimeout(() => {
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0px)';
+            el.style.filter = 'blur(0px)';
+          }, delay);
+          kineticObs.unobserve(el);
+        });
+      }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+      kineticEls.forEach(el => kineticObs.observe(el));
+
+      const heroTitle = document.querySelector('#hero h1');
+      const heroSub = document.querySelector('#hero .hero-sub');
+      if (heroTitle) {
+        heroTitle.style.transition = 'transform 1.2s cubic-bezier(0.22,1,0.36,1), opacity 1.2s ease';
+        heroTitle.style.transform = 'translateY(-70px)';
+        heroTitle.style.opacity = '0';
       }
-    })();
+      if (heroSub) {
+        heroSub.style.transition = 'transform 1.2s cubic-bezier(0.22,1,0.36,1), opacity 1.2s ease';
+        heroSub.style.transform = 'translateY(-50px)';
+        heroSub.style.opacity = '0';
+      }
+      const heroObs = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) {
+            if (heroTitle) { heroTitle.style.transform = 'translateY(-70px)'; heroTitle.style.opacity = '0'; }
+            if (heroSub) { heroSub.style.transform = 'translateY(-50px)'; heroSub.style.opacity = '0'; }
+            return;
+          }
+          requestAnimationFrame(() => {
+            if (heroTitle) { heroTitle.style.transform = 'translateY(0px)'; heroTitle.style.opacity = '1'; }
+            if (heroSub) { heroSub.style.transform = 'translateY(0px)'; heroSub.style.opacity = '1'; }
+          });
+        });
+      }, { threshold: 0 });
+      heroObs.observe(document.getElementById('hero'));
+
+      const sectionLookup = [['#projects', 22], ['#process', -16], ['#contact', 18]];
+      const state = new Map();
+      sectionLookup.forEach(([sel, px]) => state.set(sel, {px}));
+      let raf = false;
+      const onScroll = () => {
+        if (raf) return;
+        raf = true;
+        requestAnimationFrame(() => {
+          raf = false;
+          sectionLookup.forEach(([sel, px]) => {
+            const el = document.querySelector(sel);
+            if (!el) return;
+            const r = el.getBoundingClientRect();
+            const off = (window.innerHeight/2 - (r.top + r.height/2)) / window.innerHeight;
+            el.style.transform = `translateY(${off * px}px)`;
+          });
+        });
+      };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+    }
+
   </script>
 </body>
 </html>
