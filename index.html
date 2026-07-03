@@ -52,7 +52,37 @@
       box-shadow: 0 0 28px rgba(245,200,66,0.55), inset 0 0 18px rgba(245,200,66,0.12);
     }
 
-    /* Flashlight removed — no dark overlay */
+    /* Flashlight */
+    #flashlight-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 80;
+      background: transparent;
+      transition: opacity 0.35s ease;
+    }
+    #flashlight-overlay.light-on {
+      background: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55));
+      box-shadow: inset 0 0 180px rgba(0,0,0,0.85);
+    }
+    #flashlight-toggle {
+      position: fixed;
+      left: 18px;
+      bottom: 18px;
+      z-index: 110;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      border-radius: 999px;
+      background: rgba(20,20,20,0.85);
+      border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      color: #f5f5f5;
+      font-weight: 800;
+      font-size: 12px;
+      cursor: pointer;
+    }
 
     .glass {
       background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
@@ -370,6 +400,14 @@
 <body>
   <div id="cursor-dot" aria-hidden="true"></div>
   <div id="cursor-ring" aria-hidden="true"></div>
+  <div id="flashlight-overlay" aria-hidden="true"></div>
+  <button id="flashlight-toggle" aria-label="Flashlight">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v7M8 5l4 4 4-4M4 15h16v3H4z"/></svg>
+    <span id="switch-indicator" style="position:relative;width:28px;height:18px;border-radius:999px;background:#2a2a2a;border:1px solid rgba(255,255,255,0.08);display:inline-block;">
+      <span style="position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#d4d4d4;transition:left .2s,transform .2s;"></span>
+    </span>
+    Свет
+  </button>
 
   <header>
     <div class="container inner">
@@ -555,20 +593,16 @@
     (function() {
       const dot = document.getElementById('cursor-dot');
       const ring = document.getElementById('cursor-ring');
-      const hoverTargets = document.querySelectorAll('a, button, .card, .timeline-item');
-      let mx = -100, my = -100;
-      let cursorVisible = true;
+      const flashlight = document.getElementById('flashlight-overlay');
+      const toggleBtn = document.getElementById('flashlight-toggle');
+      const ind = document.querySelector('#switch-indicator span');
+      const hoverTargets = document.querySelectorAll('a, button, .card, .timeline-item, #flashlight-toggle');
+      let flashlightOn = true;
 
       function moveCursor(x, y) {
-        mx = x; my = y;
-        if (dot && ring) {
-          dot.style.left = x + 'px';
-          dot.style.top = y + 'px';
-          ring.style.left = x + 'px';
-          ring.style.top = y + 'px';
-        }
+        if (dot) { dot.style.left = x + 'px'; dot.style.top = y + 'px'; }
+        if (ring) { ring.style.left = x + 'px'; ring.style.top = y + 'px'; }
       }
-
       window.addEventListener('mousemove', e => moveCursor(e.clientX, e.clientY));
       window.addEventListener('touchstart', () => {
         if (dot) dot.style.display = 'none';
@@ -578,6 +612,25 @@
       hoverTargets.forEach(el => {
         el.addEventListener('mouseenter', () => { if (ring) ring.classList.add('hover'); });
         el.addEventListener('mouseleave', () => { if (ring) ring.classList.remove('hover'); });
+      });
+
+      if (toggleBtn && ind) {
+        toggleBtn.addEventListener('click', () => {
+          flashlightOn = !flashlightOn;
+          ind.style.left = flashlightOn ? '3px' : '14px';
+          if (flashlight) flashlight.classList.toggle('light-on', flashlightOn);
+        });
+        toggleBtn.addEventListener('mouseenter', () => { if (ring) ring.classList.add('hover'); });
+        toggleBtn.addEventListener('mouseleave', () => { if (ring) ring.classList.remove('hover'); });
+      }
+
+      window.addEventListener('mousemove', e => {
+        if (!flashlight) return;
+        if (flashlightOn) {
+          const x = e.clientX, y = e.clientY;
+          flashlight.style.background = `radial-gradient(circle 220px at ${x}px ${y}px, transparent 0%, rgba(0,0,0,0.92) 100%)`;
+          flashlight.classList.add('light-on');
+        }
       });
 
       const revealEls = document.querySelectorAll('.reveal');
